@@ -1,38 +1,36 @@
+
 import React, { useState, useEffect } from 'react';
 import IDCardFront from './components/IDCardFront';
 import IDCardBack from './components/IDCardBack';
 import { IDCardData } from './types';
-import { compressImage, exportToPDF } from './utils/imageProcessing';
+import { compressImage, exportToPDF, exportToImages } from './utils/imageProcessing';
 
 const DEFAULT_DATA: IDCardData = {
   id: '',
   photoUrl: '',
-  brandLogoUrl: '',
+  brandLogoUrl: '', 
   fullName: '',
+  category: 'TITULAR',
   masp: '',
   bloodType: '',
-  registration: '',
+  registration: '0012026',
   cpf: '',
   identity: '',
   birthDate: '',
   expiryDate: '',
   code: 'Cód 0001/2026',
-  status: 'ATIVO',
   visualTheme: 'clean'
 };
 
 const App: React.FC = () => {
   const [cardData, setCardData] = useState<IDCardData>(DEFAULT_DATA);
-  const [side, setSide] = useState<'FRONT' | 'BACK'>('FRONT');
   const [loading, setLoading] = useState(false);
-  const [isGoogleEnv, setIsGoogleEnv] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   useEffect(() => {
-    // Detecta ambiente com segurança
-    const win = window as any;
-    if (win.google && win.google.script && win.google.script.run) {
-      setIsGoogleEnv(true);
-    }
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -40,229 +38,233 @@ const App: React.FC = () => {
     setCardData(prev => ({ ...prev, [name]: String(value || '') }));
   };
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const setCategory = (cat: string) => setCardData(prev => ({ ...prev, category: cat }));
+  const setTheme = (theme: any) => setCardData(prev => ({ ...prev, visualTheme: theme }));
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, field: 'photoUrl' | 'brandLogoUrl') => {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
       try {
         const compressed = await compressImage(file);
-        setCardData(prev => ({ ...prev, photoUrl: compressed }));
+        setCardData(prev => ({ ...prev, [field]: compressed }));
       } catch (err) {
-        alert("Erro ao processar foto.");
+        alert("Erro ao processar imagem.");
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleBrandLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLoading(true);
-      try {
-        const compressed = await compressImage(file, 2);
-        setCardData(prev => ({ ...prev, brandLogoUrl: compressed }));
-      } catch (err) {
-        alert("Erro ao processar logotipo.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const saveToStorage = () => {
-    if (!cardData.masp) {
-      alert("Por favor, preencha o MASP antes de salvar.");
+  const handleExport = async (type: 'PDF_FULL' | 'PDF_CLONE' | 'JPG') => {
+    if (!cardData.fullName || !cardData.masp) {
+      alert("Por favor, preencha o Nome e o MASP para habilitar a exportação.");
       return;
     }
-
     setLoading(true);
-    const win = window as any;
-
-    if (isGoogleEnv && win.google?.script?.run) {
-      win.google.script.run
-        .withSuccessHandler(() => { 
-          setLoading(false); 
-          alert("Dados salvos com sucesso na Planilha Google!"); 
-        })
-        .withFailureHandler((err: any) => { 
-          setLoading(false); 
-          alert("Erro ao salvar na nuvem: " + err); 
-        })
-        .saveDataToSheet(cardData);
-    } else {
-      try {
-        localStorage.setItem(`pp_card_${cardData.masp}`, JSON.stringify(cardData));
-        setTimeout(() => {
-          setLoading(false);
-          alert("Salvo com sucesso no armazenamento local deste navegador!");
-        }, 500);
-      } catch (e) {
-        setLoading(false);
-        alert("Erro ao salvar localmente: Espaço insuficiente.");
-      }
-    }
-  };
-
-  const loadFromStorage = () => {
-    const m = prompt("Informe o MASP para buscar:");
-    if (!m) return;
-    
-    setLoading(true);
-    const win = window as any;
-
-    if (isGoogleEnv && win.google?.script?.run) {
-      win.google.script.run
-        .withSuccessHandler((d: any) => { 
-          setLoading(false); 
-          if(d) setCardData(d as IDCardData);
-          else alert("MASP não encontrado na planilha.");
-        })
-        .withFailureHandler((err: any) => {
-          setLoading(false);
-          alert("Erro ao buscar: " + err);
-        })
-        .getDataFromSheet(m);
-    } else {
-      const saved = localStorage.getItem(`pp_card_${m}`);
-      setTimeout(() => {
-        setLoading(false);
-        if (saved) {
-          setCardData(JSON.parse(saved));
-        } else {
-          alert("Nenhum registro local encontrado para este MASP.");
-        }
-      }, 500);
+    try {
+      const cleanMasp = cardData.masp.replace(/\D/g, '') || 'DOC';
+      const filename = `CARTEIRINHA_${cleanMasp}`;
+      
+      if (type === 'PDF_FULL') await exportToPDF(cardData, 'FULL', filename);
+      else if (type === 'PDF_CLONE') await exportToPDF(cardData, 'CLONE', filename);
+      else if (type === 'JPG') await exportToImages(cardData, filename);
+    } catch (err) {
+      console.error("Erro na exportação:", err);
+      alert("Erro ao gerar arquivos.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-100">
-      <aside className="w-full lg:w-[420px] bg-white p-6 shadow-xl border-r overflow-y-auto max-h-screen">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-slate-800 rounded flex items-center justify-center text-white font-black">PP</div>
-          <div className="flex flex-col">
-            <h1 className="font-black text-lg uppercase tracking-tight text-slate-800 leading-none">POLÍCIA PENAL</h1>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              {isGoogleEnv ? 'Modo Cloud (Google)' : 'Modo Local (Vercel)'}
-            </span>
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-100 font-sans">
+      <aside className="w-full lg:w-[480px] bg-white lg:h-screen lg:sticky lg:top-0 shadow-2xl z-20 flex flex-col overflow-hidden border-r border-slate-300">
+        <div className="p-6 border-b-2 border-slate-100 bg-slate-900 text-white">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg">PP</div>
+            <div>
+              <h1 className="font-black text-xs uppercase tracking-tighter leading-none">SISTEMA DE EMISSÃO</h1>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">ASSPRIJUF OFICIAL</span>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={saveToStorage} className="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-lg font-bold text-[10px] uppercase transition-all shadow-md">
-              {isGoogleEnv ? 'Salvar Nuvem' : 'Salvar Local'}
-            </button>
-            <button onClick={loadFromStorage} className="border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 p-3 rounded-lg font-bold text-[10px] uppercase transition-all">
-              Buscar MASP
-            </button>
-          </div>
-
-          <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-             <div className="space-y-1">
-               <label className="text-[10px] font-black text-slate-500 uppercase px-1">Nome Completo</label>
-               <input type="text" name="fullName" value={cardData.fullName} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm uppercase font-bold focus:ring-2 focus:ring-red-100 outline-none text-slate-900 bg-white" />
-             </div>
-
-             <div className="grid grid-cols-2 gap-3">
-               <div className="space-y-1">
-                 <label className="text-[10px] font-black text-slate-500 uppercase px-1">MASP</label>
-                 <input type="text" name="masp" value={cardData.masp} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold bg-white" />
-               </div>
-               <div className="space-y-1">
-                 <label className="text-[10px] font-black text-slate-500 uppercase px-1">Status</label>
-                 <select name="status" value={cardData.status} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white font-black text-slate-800">
-                    <option value="ATIVO">✅ ATIVO</option>
-                    <option value="INATIVO">❌ INATIVO</option>
-                 </select>
+        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1 pb-10 bg-white">
+           
+           <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+             <div className="space-y-2">
+               <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest block">Categoria do Servidor</label>
+               <div className="grid grid-cols-2 gap-2">
+                 <button 
+                   onClick={() => setCategory('TITULAR')}
+                   className={`py-3 px-4 rounded-xl text-xs font-black transition-all border-2 ${cardData.category === 'TITULAR' ? 'bg-red-600 border-red-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                 >TITULAR</button>
+                 <button 
+                   onClick={() => setCategory('DEPENDENTE')}
+                   className={`py-3 px-4 rounded-xl text-xs font-black transition-all border-2 ${cardData.category === 'DEPENDENTE' ? 'bg-red-600 border-red-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                 >DEPENDENTE</button>
                </div>
              </div>
 
-             <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase px-1">CPF</label>
-                  <input type="text" name="cpf" value={cardData.cpf} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase px-1">Identidade</label>
-                  <input type="text" name="identity" value={cardData.identity} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white" />
-                </div>
+             <div className="space-y-2">
+               <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest block">Estilo Visual do Cartão</label>
+               <div className="flex gap-3">
+                 {[
+                   { id: 'clean', color: 'bg-slate-300', label: 'Clean' },
+                   { id: 'black', color: 'bg-zinc-900', label: 'Black' },
+                   { id: 'metal', color: 'bg-zinc-600', label: 'Metal' },
+                   { id: 'rubro', color: 'bg-red-900', label: 'Rubro' }
+                 ].map(t => (
+                   <button 
+                    key={t.id}
+                    onClick={() => setTheme(t.id)}
+                    className={`w-10 h-10 rounded-full ${t.color} border-4 transition-all ${cardData.visualTheme === t.id ? 'border-red-500 scale-110 shadow-lg' : 'border-white shadow-sm hover:scale-105'}`}
+                    title={t.label}
+                   />
+                 ))}
+               </div>
+             </div>
+           </div>
+
+           <div className="space-y-4">
+             <h3 className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-1">Identificação</h3>
+             
+             <div className="space-y-1.5">
+               <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">Nome Completo</label>
+               <input type="text" name="fullName" value={cardData.fullName} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold uppercase focus:border-red-600 outline-none bg-white" placeholder="NOME DO SERVIDOR" />
              </div>
 
              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase px-1">Nascimento</label>
-                  <input type="text" name="birthDate" placeholder="DD/MM/AAAA" value={cardData.birthDate} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase px-1">Validade</label>
-                  <input type="text" name="expiryDate" placeholder="DD/MM/AAAA" value={cardData.expiryDate} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-bold text-red-600 bg-white" />
-                </div>
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">MASP</label>
+                 <input type="text" name="masp" value={cardData.masp} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold focus:border-red-600 outline-none" placeholder="000.000-0" />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">CPF</label>
+                 <input type="text" name="cpf" value={cardData.cpf} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold focus:border-red-600 outline-none" placeholder="000.000.000-00" />
+               </div>
+             </div>
+           </div>
+
+           <div className="space-y-4">
+             <h3 className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-1">Dados Funcionais</h3>
+             
+             <div className="grid grid-cols-2 gap-3">
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">Identidade (RG)</label>
+                 <input type="text" name="identity" value={cardData.identity} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold focus:border-red-600 outline-none" placeholder="MG-00.000.000" />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">Tipo Sanguíneo</label>
+                 <input type="text" name="bloodType" value={cardData.bloodType} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold focus:border-red-600 outline-none" placeholder="Ex: AB+" />
+               </div>
              </div>
 
              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase px-1">Matrícula</label>
-                  <input type="text" name="registration" value={cardData.registration} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase px-1">Sangue</label>
-                  <input type="text" name="bloodType" placeholder="Ex: O+" value={cardData.bloodType} onChange={handleInputChange} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm uppercase bg-white font-bold" />
-                </div>
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">Data Nascimento</label>
+                 <input type="text" name="birthDate" value={cardData.birthDate} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold focus:border-red-600 outline-none" placeholder="DD/MM/AAAA" />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">Data Validade</label>
+                 <input type="text" name="expiryDate" value={cardData.expiryDate} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold focus:border-red-600 outline-none" placeholder="DD/MM/AAAA" />
+               </div>
              </div>
 
-             <div className="space-y-1">
-               <label className="text-[10px] font-black text-slate-600 uppercase px-1 tracking-widest">Tema Visual</label>
-               <select name="visualTheme" value={cardData.visualTheme} onChange={handleInputChange} className="w-full p-3 border-2 border-slate-400 rounded-lg text-sm bg-white font-bold text-slate-900 shadow-sm focus:border-slate-800 outline-none cursor-pointer">
-                  <option value="clean">⚪ TEMA CLEAN</option>
-                  <option value="black">⚫ TEMA BLACK</option>
-                  <option value="metal">🔘 TEMA METAL</option>
-                  <option value="rubro">🔴 TEMA RUBRO</option>
-               </select>
-             </div>
-
-             <div className="pt-4 border-t-2 border-slate-200 space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest">Foto 3x4</label>
-                  <input type="file" accept="image/*" onChange={handleFile} className="w-full text-[10px] text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-900 cursor-pointer" />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-slate-700 uppercase tracking-widest">Brasão/Logo</label>
-                  <input type="file" accept="image/*" onChange={handleBrandLogoFile} className="w-full text-[10px] text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-slate-800 file:text-white hover:file:bg-slate-900 cursor-pointer" />
+             <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider block">Matrícula</label>
+                  <input type="text" name="registration" value={cardData.registration} onChange={handleInputChange} className="w-full p-3.5 border-2 border-slate-400 rounded-xl text-sm font-bold outline-none" placeholder="MATRÍCULA" />
                 </div>
              </div>
-          </div>
+           </div>
 
-          <button 
-            onClick={() => exportToPDF(['card-front', 'card-back'], `ID_PP_${cardData.masp || 'DOC'}`)} 
-            className="w-full bg-slate-900 hover:bg-black text-white p-4 rounded-xl font-black shadow-xl transition-all uppercase text-sm tracking-[0.2em]"
-          >
-            Exportar PDF (1080x1920)
-          </button>
+           <div className="pt-4 border-t-2 border-slate-100 space-y-4">
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">Brasão / Logo Personalizada</label>
+                 <div className="relative group">
+                   <input type="file" onChange={(e) => handleFile(e, 'brandLogoUrl')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                   <div className="border-2 border-dashed border-slate-400 rounded-xl p-4 text-center group-hover:border-red-600 group-hover:bg-red-50 transition-all">
+                     <span className="text-[10px] font-black text-slate-500 group-hover:text-red-600 uppercase">Anexar Brasão</span>
+                   </div>
+                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">Foto do Servidor (3x4)</label>
+                 <div className="relative group">
+                   <input type="file" onChange={(e) => handleFile(e, 'photoUrl')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                   <div className="border-2 border-dashed border-slate-400 rounded-xl p-4 text-center group-hover:border-red-600 group-hover:bg-red-50 transition-all">
+                     <span className="text-[10px] font-black text-slate-500 group-hover:text-red-600 uppercase">Anexar Foto Profissional</span>
+                   </div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="pt-6 mt-4 border-t-4 border-slate-100 space-y-3">
+              <button 
+                onClick={() => handleExport('PDF_FULL')} 
+                disabled={loading}
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black shadow-lg uppercase text-[12px] tracking-widest flex items-center justify-center gap-3 disabled:opacity-50 transition-all active:scale-95"
+              >
+                {loading ? 'PROCESSANDO...' : 'EXPORTAR PDF (FOLHA A4)'}
+              </button>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => handleExport('PDF_CLONE')} 
+                  disabled={loading}
+                  className="bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-black shadow-md uppercase text-[10px] tracking-widest disabled:opacity-50"
+                >
+                  FRENTE + VERSO
+                </button>
+                <button 
+                  onClick={() => handleExport('JPG')} 
+                  disabled={loading}
+                  className="bg-white border-2 border-slate-400 text-slate-900 hover:bg-slate-50 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest disabled:opacity-50 shadow-sm"
+                >
+                  SALVAR JPG
+                </button>
+              </div>
+           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-200/50 relative overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center font-black text-slate-900 uppercase">
-             Processando...
+      <main className="flex-1 bg-slate-200/50 p-4 lg:p-12 overflow-y-auto">
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-8 pb-20">
+          <div className="text-center">
+            <h2 className="font-black text-slate-900 uppercase tracking-widest text-lg">Pré-Visualização</h2>
+            <p className="text-slate-500 text-sm font-bold mt-1 uppercase tracking-tighter">ASSPRIJUF - Identidade Virtual</p>
           </div>
-        )}
-        
-        <div className="flex bg-white/80 backdrop-blur p-1.5 rounded-full shadow-lg mb-8 z-10">
-          <button onClick={() => setSide('FRONT')} className={`px-12 py-3 rounded-full font-black text-xs transition-all ${side === 'FRONT' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>FRENTE</button>
-          <button onClick={() => setSide('BACK')} className={`px-12 py-3 rounded-full font-black text-xs transition-all ${side === 'BACK' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>VERSO</button>
+          
+          <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} items-center justify-center gap-10 w-full`}>
+             <div className="flex flex-col items-center gap-4 w-full max-w-[400px]">
+               <div className="bg-slate-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">FRENTE</div>
+               <div className="w-full aspect-[1080/1528] bg-white shadow-2xl rounded-2xl overflow-hidden relative border-4 border-white">
+                  <div className="absolute inset-0 origin-top-left" style={{ transform: `scale(${isMobile ? (window.innerWidth - 64) / 1080 : 0.37})` }}>
+                     <IDCardFront data={cardData} />
+                  </div>
+               </div>
+             </div>
+
+             <div className="flex flex-col items-center gap-4 w-full max-w-[400px]">
+               <div className="bg-slate-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">VERSO</div>
+               <div className="w-full aspect-[1080/1528] bg-white shadow-2xl rounded-2xl overflow-hidden relative border-4 border-white">
+                  <div className="absolute inset-0 origin-top-left" style={{ transform: `scale(${isMobile ? (window.innerWidth - 64) / 1080 : 0.37})` }}>
+                     <IDCardBack data={cardData} />
+                  </div>
+               </div>
+             </div>
+          </div>
         </div>
 
-        <div className="id-card-viewport transform scale-[0.20] md:scale-[0.30] lg:scale-[0.35] origin-top transition-all duration-700">
-          <div className={`${side === 'FRONT' ? 'block' : 'hidden'} shadow-[0_60px_120px_rgba(0,0,0,0.3)] rounded-[50px] overflow-hidden`}>
-            <IDCardFront data={cardData} id="card-front" />
+        {loading && (
+          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex flex-col items-center justify-center">
+             <div className="w-16 h-16 border-4 border-white/20 border-t-red-600 rounded-full animate-spin mb-4"></div>
+             <span className="font-black text-white uppercase tracking-widest animate-pulse">Gerando Documento...</span>
           </div>
-          <div className={`${side === 'BACK' ? 'block' : 'hidden'} shadow-[0_60px_120px_rgba(0,0,0,0.3)] rounded-[50px] overflow-hidden`}>
-            <IDCardBack data={cardData} id="card-back" />
-          </div>
-        </div>
+        )}
       </main>
     </div>
   );

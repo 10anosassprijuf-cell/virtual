@@ -4,6 +4,7 @@ export interface IDCardData {
   photoUrl: string;
   brandLogoUrl: string;
   fullName: string;
+  category: string;
   masp: string;
   bloodType: string;
   registration: string;
@@ -12,7 +13,6 @@ export interface IDCardData {
   birthDate: string;
   expiryDate: string;
   code: string;
-  status: 'ATIVO' | 'INATIVO' | 'INEXISTENTE';
   visualTheme: 'clean' | 'black' | 'metal' | 'rubro';
   validationUrl?: string;
 }

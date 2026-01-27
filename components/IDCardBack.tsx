@@ -21,23 +21,14 @@ const IDCardBack: React.FC<IDCardBackProps> = ({ data, id }) => {
   const today = new Date();
   const expeditionDate = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`;
 
-  // Gerar um Hash simples para simular autenticidade
-  const securityHash = btoa(`${data.masp}-${data.cpf}-${expeditionDate}`).substring(0, 16).toUpperCase();
+  const securityHash = btoa(`${data.masp || '0'}-${data.cpf || '0'}-${expeditionDate}`).substring(0, 16).toUpperCase();
 
-  // QR Code configurado para exibir o JSON conforme solicitado
-  const qrValue = JSON.stringify({
-    AUTENTICIDADE: securityHash,
-    NOME: data.fullName || 'NÃO INFORMADO',
-    MASP: data.masp,
-    STATUS: data.status,
-    EXPEDICAO: expeditionDate,
-    VALIDACAO: "POLÍCIA PENAL - ASSPRIJUF"
-  });
+  const qrValue = `https://depen.seguranca.mg.gov.br/`;
 
   const InfoRow = ({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) => (
-    <div className={`w-full border-b-2 border-gray-100 py-6 ${highlight ? 'bg-slate-50/50' : ''}`}>
-      <p className="text-2xl text-gray-400 font-bold uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-4xl font-semibold ${highlight ? (value === 'ATIVO' ? 'text-green-600' : 'text-red-600') : 'text-gray-800'}`}>
+    <div className={`w-full border-b-[3px] border-gray-100 py-3 px-10 ${highlight ? 'bg-slate-50' : ''}`}>
+      <p className="text-[16px] text-gray-400 font-bold uppercase tracking-widest mb-1 leading-none">{label}</p>
+      <p className={`text-[32px] font-black leading-tight tracking-tight text-gray-900`}>
         {value || '---'}
       </p>
     </div>
@@ -46,70 +37,81 @@ const IDCardBack: React.FC<IDCardBackProps> = ({ data, id }) => {
   return (
     <div 
       id={id}
-      className="flex flex-col bg-white overflow-hidden shadow-2xl relative"
-      style={{ width: '1080px', height: '1920px' }}
+      className="flex flex-col bg-white overflow-hidden relative m-0 p-0"
+      style={{ 
+        width: '1080px', 
+        height: '1528px',
+        minWidth: '1080px',
+        minHeight: '1528px',
+        boxSizing: 'border-box'
+      }}
     >
       <div 
-        className="absolute left-0 top-0 bottom-0 w-8 transition-colors duration-500" 
+        className="absolute left-0 top-0 bottom-0 w-10" 
         style={{ backgroundColor: accentColor }}
       />
 
-      <div className="flex flex-col items-center pt-20 px-20 h-full">
-        <div className="flex justify-between items-center w-full mb-16">
-          <h2 className="text-5xl font-black text-gray-800 tracking-widest border-l-8 border-red-600 pl-6 uppercase">
+      <div className="flex flex-col items-center pt-14 px-24 h-full">
+        
+        <div className="flex justify-between items-center w-full mb-8">
+          <h2 className="text-[50px] font-black text-slate-800 tracking-widest border-l-[16px] border-red-600 pl-8 uppercase leading-none">
             Dados Funcionais
           </h2>
-          <div className={`px-6 py-2 rounded-full border-4 ${data.status === 'ATIVO' ? 'border-green-500 text-green-600' : 'border-red-500 text-red-600'} font-black text-3xl`}>
-             {data.status}
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 w-full mb-10">
+        <div className="flex flex-col w-full">
           <InfoRow label="MASP" value={data.masp} />
-          <InfoRow label="Status do Cadastro" value={data.status} highlight />
-          <InfoRow label="Matrícula" value={data.registration} />
-          <InfoRow label="CPF" value={data.cpf} />
-          <InfoRow label="Identidade" value={data.identity} />
-          <div className="grid grid-cols-2 gap-10">
-            <InfoRow label="Data de Nascimento" value={data.birthDate} />
-            <InfoRow label="Validade" value={data.expiryDate} />
+          
+          <div className="flex w-full">
+             <div className="flex-1 border-r-[3px] border-gray-100"><InfoRow label="Matrícula" value={data.registration} /></div>
+             <div className="flex-1"><InfoRow label="CPF" value={data.cpf} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-10">
-            <InfoRow label="Codificação" value={data.code} />
-            <InfoRow label="Expedição" value={expeditionDate} />
+          
+          <div className="flex w-full">
+            <div className="flex-[2] border-r-[3px] border-gray-100"><InfoRow label="RG / Identidade" value={data.identity} /></div>
+            <div className="flex-1"><InfoRow label="Tipo Sanguíneo" value={data.bloodType} /></div>
+          </div>
+          
+          <div className="flex w-full">
+            <div className="flex-1 border-r-[3px] border-gray-100"><InfoRow label="Nascimento" value={data.birthDate} /></div>
+            <div className="flex-1"><InfoRow label="Validade" value={data.expiryDate} /></div>
+          </div>
+
+          <div className="flex w-full">
+            <div className="flex-1 border-r-[3px] border-gray-100"><InfoRow label="Código de Controle" value={data.code} /></div>
+            <div className="flex-1"><InfoRow label="Expedição" value={expeditionDate} /></div>
           </div>
         </div>
 
-        {/* SELO DE AUTENTICIDADE */}
-        <div className="w-full flex justify-end mb-4">
+        <div className="w-full flex justify-end mt-4 mb-2">
            <div className="flex flex-col items-end opacity-40">
-              <span className="text-sm font-bold uppercase tracking-tighter">Selo de Autenticidade Digital</span>
-              <span className="text-2xl font-mono font-black">{securityHash}</span>
+              <span className="text-[12px] font-bold uppercase tracking-[0.3em] mb-1">Criptografia de Segurança</span>
+              <span className="text-[26px] font-mono font-black text-slate-900">{securityHash}</span>
            </div>
         </div>
 
-        <div className="mt-auto mb-24 flex flex-col items-center">
-          <div className="p-8 border-[12px] border-gray-100 rounded-[40px] bg-white shadow-2xl relative">
-             <QRCodeSVG value={qrValue} size={480} level="H" includeMargin={true} />
-             {/* Pequeno logo no centro do QR Code para parecer oficial */}
+        <div className="flex-1 flex flex-col items-center justify-center w-full">
+          <div className="p-8 border-[16px] border-slate-50 rounded-[60px] bg-white shadow-[0_40px_100px_rgba(0,0,0,0.1)] relative">
+             <QRCodeSVG value={qrValue} size={340} level="H" includeMargin={true} />
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center shadow-lg border-4 border-gray-100">
-                   <span className="text-red-600 font-black text-4xl">PP</span>
+                <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-2xl border-4 border-slate-100">
+                   <span className="text-red-600 font-black text-[36px]">PP</span>
                 </div>
              </div>
           </div>
-          <div className="mt-10 flex flex-col items-center gap-2">
-            <p className="text-3xl text-gray-800 font-black tracking-[0.3em] uppercase">Validação Digital</p>
-            <p className="text-xl text-gray-400 font-bold uppercase tracking-widest text-center">
-              Escaneie para conferir a integridade e autenticidade dos dados
+          
+          <div className="mt-8 text-center">
+            <h3 className="text-[40px] text-slate-800 font-black tracking-[0.5em] uppercase leading-none">Validação Digital</h3>
+            <p className="text-[20px] text-slate-400 font-bold uppercase tracking-widest mt-4">
+              Acesse o portal para confirmar os dados do servidor
             </p>
           </div>
         </div>
 
-        <div className="w-full text-center pb-20 italic text-gray-400 text-xl px-20">
-          Esta carteira é pessoal e intransferível. O porte é obrigatório em serviço.
-          <br/>
-          <span className="font-bold not-italic mt-4 block">ASSPRIJUF - JUIZ DE FORA</span>
+        <div className="w-full text-center pb-10 mt-auto">
+          <p className="italic text-slate-400 text-[20px] mb-4">Documento oficial de uso pessoal e intransferível.</p>
+          <div className="h-[2px] w-64 bg-slate-200 mx-auto mb-6"></div>
+          <p className="font-black text-slate-900 text-[30px] uppercase tracking-[0.2em] leading-none">ASSPRIJUF - Juiz de Fora</p>
         </div>
       </div>
     </div>
