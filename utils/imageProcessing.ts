@@ -1,14 +1,13 @@
-
 import { jsPDF } from 'jspdf';
 import { IDCardData } from '../types';
 
-const loadImage = (src: string, timeout = 3000): Promise<HTMLImageElement> => {
+const loadImage = (src: string, timeout = 5000): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     const timer = setTimeout(() => {
       img.src = ""; 
-      reject(new Error("Timeout"));
+      reject(new Error("Timeout carregando imagem"));
     }, timeout);
 
     img.onload = () => {
@@ -17,7 +16,7 @@ const loadImage = (src: string, timeout = 3000): Promise<HTMLImageElement> => {
     };
     img.onerror = () => {
       clearTimeout(timer);
-      reject(new Error("Error"));
+      reject(new Error("Erro ao carregar imagem"));
     };
     img.src = src;
   });
@@ -34,10 +33,10 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
   if (!ctx) throw new Error("Canvas context error");
 
   const themes = {
-    clean: { bg: '#E9EAEC', accent: '#A3A5A0', text: '#1e293b', footer: '#A4A7A1', nameBg: '#f0f1f3' },
-    black: { bg: '#0a0a0a', accent: '#333333', text: '#ffffff', footer: '#000000', nameBg: '#1a1a1a' },
-    metal: { bg: '#52525b', accent: '#27272a', text: '#ffffff', footer: '#18181b', nameBg: '#27272a' },
-    rubro: { bg: '#450a0a', accent: '#991b1b', text: '#ffffff', footer: '#1a0000', nameBg: '#310505' }
+    clean: { bg: '#E9EAEC', accent: '#A3A5A0', text: '#1e293b', footer: '#A4A7A1', nameBg: '#f0f1f3', categoryText: '#64748b' },
+    black: { bg: '#0a0a0a', accent: '#333333', text: '#ffffff', footer: '#000000', nameBg: '#1a1a1a', categoryText: '#a1a1aa' },
+    metal: { bg: '#52525b', accent: '#27272a', text: '#ffffff', footer: '#18181b', nameBg: '#27272a', categoryText: '#d4d4d8' },
+    rubro: { bg: '#450a0a', accent: '#991b1b', text: '#ffffff', footer: '#1a0000', nameBg: '#310505', categoryText: '#fecaca' }
   };
   const theme = themes[data.visualTheme || 'clean'];
 
@@ -45,28 +44,31 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
   ctx.fillRect(0, 0, width, height);
 
   if (side === 'FRONT') {
+    // Header
     ctx.fillStyle = theme.accent;
     ctx.fillRect(0, 0, width, 100);
 
+    // Logo
     if (data.brandLogoUrl) {
-      const logoSize = 320;
       try {
         const logo = await loadImage(data.brandLogoUrl);
-        ctx.drawImage(logo, (width - logoSize) / 2, 105, logoSize, logoSize);
-      } catch (e) { 
-        console.warn("Logo não pôde ser carregada para exportação.");
-      }
+        const logoSize = 320;
+        ctx.drawImage(logo, (width - logoSize) / 2, 110, logoSize, logoSize);
+      } catch (e) { console.warn("Logo skip"); }
     }
 
+    // Title
     ctx.fillStyle = theme.text;
     ctx.textAlign = 'center';
     ctx.font = '900 110px sans-serif';
     ctx.fillText("POLÍCIA PENAL", width / 2, 510);
 
+    // Lines
     ctx.fillStyle = '#e11d48';
     ctx.fillRect(width / 2 - 280, 560, 200, 10);
     ctx.fillRect(width / 2 + 80, 560, 200, 10);
 
+    // Photo
     const photoW = 480;
     const photoH = 600;
     const photoX = (width - photoW) / 2;
@@ -83,23 +85,24 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
         ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(photoX, photoY, photoW, photoH);
       }
-    } else {
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(photoX, photoY, photoW, photoH);
     }
 
-    ctx.fillStyle = theme.text;
-    ctx.font = 'bold 35px sans-serif';
-    ctx.fillText(data.category || "TITULAR", width / 2, 1360);
+    // CATEGORIA (Destaque na exportação)
+    ctx.fillStyle = theme.categoryText;
+    ctx.font = '900 50px sans-serif';
+    ctx.fillText(data.category || "TITULAR", width / 2, 1330);
 
+    // Name Box
     ctx.fillStyle = theme.nameBg;
-    roundRect(ctx, (width - 920) / 2, 1390, 920, 160, 40, true);
+    roundRect(ctx, (width - 920) / 2, 1370, 920, 180, 40, true);
     
+    // Name Text
     ctx.fillStyle = theme.text;
-    const name = data.fullName || "NOME DO TITULAR";
+    const name = data.fullName || `NOME DO ${data.category || 'TITULAR'}`;
     ctx.font = `900 ${name.length > 25 ? '55px' : '75px'} sans-serif`;
-    ctx.fillText(name.toUpperCase(), width / 2, 1495);
+    ctx.fillText(name.toUpperCase(), width / 2, 1485);
 
+    // Footer
     ctx.fillStyle = theme.footer;
     ctx.fillRect(0, height - 200, width, 200);
     ctx.fillStyle = '#ffffff';
@@ -107,6 +110,7 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
     ctx.fillText("ASSPRIJUF", width / 2, height - 60);
 
   } else {
+    // Verso logic
     ctx.fillStyle = theme.accent;
     ctx.fillRect(0, 0, 50, height);
     
@@ -140,6 +144,7 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
     drawData("Nascimento", data.birthDate, 570, 130, 390);
     drawData("Validade", data.expiryDate, 570, 560, 390);
 
+    // QR Code Area Placeholder (Black box)
     ctx.fillStyle = '#f8fafc';
     roundRect(ctx, (width - 460) / 2, 840, 460, 460, 60, true);
     ctx.fillStyle = '#000000';

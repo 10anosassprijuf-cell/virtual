@@ -1,4 +1,3 @@
-
 /**
  * SISTEMA DE CARTEIRINHA VIRTUAL - POLÍCIA PENAL
  * 
@@ -27,7 +26,7 @@ function saveDataToSheet(cardData) {
       sheet.appendRow([
         'ID', 'Nome Completo', 'MASP', 'Tipo Sanguineo', 'Matricula', 
         'CPF', 'Identidade', 'Data Nascimento', 'Data Validade', 
-        'Codificacao', 'Status', 'Tema', 'URL Foto', 'URL Logo'
+        'Codificacao', 'Tema', 'URL Foto', 'URL Logo'
       ]);
     }
     
@@ -57,7 +56,6 @@ function saveDataToSheet(cardData) {
       cardData.birthDate || "",
       cardData.expiryDate || "",
       cardData.code || "",
-      cardData.status || "ATIVO",
       cardData.visualTheme || "clean",
       cardData.photoUrl || "",
       cardData.brandLogoUrl || ""
@@ -102,7 +100,6 @@ function getDataFromSheet(masp) {
           birthDate: row[7],
           expiryDate: row[8],
           code: row[9],
-          status: row[10],
           visualTheme: row[11],
           photoUrl: row[12],
           brandLogoUrl: row[13]
