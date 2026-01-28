@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { IDCardData } from '../types';
 
 interface IDCardFrontProps {
@@ -6,6 +7,9 @@ interface IDCardFrontProps {
 }
 
 const IDCardFront: React.FC<IDCardFrontProps> = ({ data }) => {
+  const [logo1Error, setLogo1Error] = useState(false);
+  const [logo2Error, setLogo2Error] = useState(false);
+
   const themes = {
     clean: { bg: '#E9EAEC', gradient: 'linear-gradient(135deg, #E9EAEC 0%, #D1D3D6 100%)', header: '#A3A5A0', footer: '#A4A7A1', textMain: 'text-slate-800', textName: 'text-slate-900', nameBg: 'bg-[#f0f1f3]', photoBorder: 'border-white', categoryTag: 'bg-slate-300/50', categoryText: 'text-slate-600' },
     black: { bg: '#0a0a0a', gradient: 'linear-gradient(135deg, #1a1a1a 0%, #000000 100%)', header: '#333333', footer: '#000000', textMain: 'text-gray-200', textName: 'text-white', nameBg: 'bg-[#1a1a1a]', photoBorder: 'border-zinc-800', categoryTag: 'bg-zinc-800', categoryText: 'text-zinc-400' },
@@ -24,38 +28,56 @@ const IDCardFront: React.FC<IDCardFrontProps> = ({ data }) => {
 
   return (
     <div className="relative flex flex-col items-center overflow-hidden m-0 p-0 shadow-2xl" style={{ width: '1080px', height: '1528px', backgroundColor: style.bg, backgroundImage: style.gradient }}>
-      {/* Faixa Superior */}
-      <div className="w-full h-[100px] flex items-center justify-center border-b-[4px] border-black/5" style={{ backgroundColor: style.header }}></div>
+      {/* Barra de Topo */}
+      <div className="w-full h-[90px] flex items-center justify-center shadow-lg relative z-10" style={{ backgroundColor: style.header }}>
+         <div className="w-[800px] h-[4px] bg-white/20 rounded-full"></div>
+      </div>
       
-      <div className="flex flex-col items-center w-full px-20 pt-10 flex-1 relative">
-        {/* Brasão */}
-        <div className="w-[320px] h-[320px] mb-6 relative flex items-center justify-center">
-          {data.brandLogoUrl ? (
-            <img src={data.brandLogoUrl} alt="Brasão" className="w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]" />
-          ) : (
-            <div className="w-full h-full border-4 border-dashed border-black/10 rounded-full flex items-center justify-center">
-               <span className="text-[20px] font-black text-black/10 uppercase tracking-widest text-center px-8">Brasão</span>
-            </div>
-          )}
-        </div>
+      <div className="flex flex-col items-center w-full px-20 pt-14 flex-1 relative">
+        {/* LOGOS DUPLOS LADO A LADO */}
+        <div className="flex items-center justify-center gap-20 mb-12">
+          {/* Logo 1: ASSPRIJUF */}
+          <div className="w-[340px] h-[340px] relative flex items-center justify-center">
+            {!logo1Error ? (
+              <img 
+                src={data.brandLogoUrl} 
+                alt="Logo ASSPRIJUF" 
+                className="w-full h-full object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.35)]" 
+                onError={() => setLogo1Error(true)}
+              />
+            ) : null}
+          </div>
 
-        {/* Cabeçalho */}
-        <div className="text-center mb-8 w-full">
-          <h1 className={`text-[110px] font-black tracking-tight uppercase leading-[0.8] drop-shadow-2xl ${style.textMain}`}>POLÍCIA PENAL</h1>
-          <div className="flex items-center justify-center gap-12 mt-10">
-            <div className="h-2.5 w-52 bg-red-600 rounded-full shadow-lg"></div>
-            <div className="h-2.5 w-52 bg-red-600 rounded-full shadow-lg"></div>
+          {/* Logo 2: Brasão */}
+          <div className="w-[340px] h-[340px] relative flex items-center justify-center">
+            {!logo2Error ? (
+              <img 
+                src={data.secondaryLogoUrl} 
+                alt="Brasão Oficial" 
+                className="w-full h-full object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.35)]" 
+                onError={() => setLogo2Error(true)}
+              />
+            ) : null}
           </div>
         </div>
 
-        {/* Foto */}
+        {/* Título Principal */}
+        <div className="text-center mb-10 w-full">
+          <h1 className={`text-[115px] font-black tracking-tighter uppercase leading-[0.85] drop-shadow-xl ${style.textMain}`}>POLÍCIA PENAL</h1>
+          <div className="flex items-center justify-center gap-16 mt-12">
+            <div className="h-3 w-48 bg-red-600 rounded-full shadow-lg"></div>
+            <div className="h-3 w-48 bg-red-600 rounded-full shadow-lg"></div>
+          </div>
+        </div>
+
+        {/* Fotografia */}
         <div className="relative mb-8">
-          <div className={`w-[480px] h-[600px] border-[20px] bg-slate-200 shadow-[0_40px_80px_rgba(0,0,0,0.6)] overflow-hidden flex items-center justify-center ${style.photoBorder}`}>
+          <div className={`w-[480px] h-[600px] border-[22px] bg-slate-100 shadow-[0_60px_100px_rgba(0,0,0,0.6)] overflow-hidden flex items-center justify-center ${style.photoBorder}`}>
             {data.photoUrl ? (
               <img src={data.photoUrl} alt="Foto" className="w-full h-full object-cover" />
             ) : (
-              <div className="flex flex-col items-center opacity-20">
-                <svg className="h-40 w-40 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center opacity-10">
+                <svg className="h-44 w-44 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
@@ -63,28 +85,27 @@ const IDCardFront: React.FC<IDCardFrontProps> = ({ data }) => {
           </div>
         </div>
 
-        {/* Informações do Servidor */}
-        <div className="text-center w-full px-2">
-          {/* Badge de Categoria (TITULAR/DEPENDENTE) */}
+        {/* Nome do Servidor */}
+        <div className="text-center w-full px-4">
           <div className="flex justify-center mb-6">
-            <div className={`px-16 py-3 rounded-full border-2 border-black/10 shadow-lg ${style.categoryTag}`}>
-              <span className={`text-[45px] font-black uppercase tracking-[0.3em] ${style.categoryText}`}>
+            <div className={`px-16 py-4 rounded-full border-2 border-black/5 shadow-md ${style.categoryTag}`}>
+              <span className={`text-[44px] font-black uppercase tracking-[0.4em] ${style.categoryText}`}>
                 {data.category || 'TITULAR'}
               </span>
             </div>
           </div>
 
-          <div className={`rounded-[40px] min-h-[180px] w-full flex items-center justify-center py-8 px-12 shadow-2xl border-b-8 border-black/10 ${style.nameBg}`}>
+          <div className={`rounded-[45px] min-h-[190px] w-full flex items-center justify-center py-8 px-12 shadow-2xl border-b-[12px] border-black/15 ${style.nameBg}`}>
             <p className={`${getNameFontSize(data.fullName)} font-black uppercase leading-[1.0] tracking-tighter text-center ${style.textName}`}>
-              {data.fullName || `NOME DO ${data.category || 'TITULAR'}`}
+              {data.fullName || "SERVIDOR ASSPRIJUF"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Rodapé */}
-      <div className="w-full h-64 flex flex-col items-center justify-center border-t-[12px] border-black/10 shadow-[0_-20px_50px_rgba(0,0,0,0.2)]" style={{ backgroundColor: style.footer }}>
-        <p className="text-white text-[130px] font-black tracking-[0.05em] uppercase leading-none drop-shadow-lg">ASSPRIJUF</p>
+      {/* Rodapé ASSPRIJUF */}
+      <div className="w-full h-72 flex flex-col items-center justify-center border-t-[12px] border-black/10 shadow-[0_-20px_50px_rgba(0,0,0,0.2)]" style={{ backgroundColor: style.footer }}>
+        <p className="text-white text-[140px] font-black tracking-[0.05em] uppercase leading-none drop-shadow-2xl">ASSPRIJUF</p>
       </div>
     </div>
   );

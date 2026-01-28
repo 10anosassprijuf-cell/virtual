@@ -1,5 +1,6 @@
+
 /**
- * SISTEMA DE CARTEIRINHA VIRTUAL - POLÍCIA PENAL
+ * SISTEMA DE CARTEIRINHA POLÍCIA PENAL
  * 
  * Este arquivo (code.gs) deve ser colado no editor do Google Apps Script.
  * Certifique-se de que sua planilha tenha uma aba chamada 'Dados'.
@@ -7,7 +8,7 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('Carteirinha Virtual - Polícia Penal')
+    .setTitle('Carteirinha Polícia Penal')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }

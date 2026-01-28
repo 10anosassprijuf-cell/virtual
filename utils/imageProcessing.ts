@@ -1,7 +1,8 @@
+
 import { jsPDF } from 'jspdf';
 import { IDCardData } from '../types';
 
-const loadImage = (src: string, timeout = 5000): Promise<HTMLImageElement> => {
+const loadImage = (src: string, timeout = 7000): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -40,39 +41,55 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
   };
   const theme = themes[data.visualTheme || 'clean'];
 
+  // 1. Fundo Base
   ctx.fillStyle = theme.bg;
   ctx.fillRect(0, 0, width, height);
 
   if (side === 'FRONT') {
-    // Header
+    // 2. Elementos de Estrutura (Desenhados primeiro para ficarem atrás do texto)
+    // Barra de Topo
     ctx.fillStyle = theme.accent;
-    ctx.fillRect(0, 0, width, 100);
+    ctx.fillRect(0, 0, width, 90);
 
-    // Logo
+    // Rodapé (Pintado antes dos textos para não cobri-los)
+    ctx.fillStyle = theme.footer;
+    ctx.fillRect(0, height - 220, width, 220);
+
+    // 3. Logos
+    const logoSize = 300;
+    const gap = 80;
+    const startX = (width - (logoSize * 2 + gap)) / 2;
+
     if (data.brandLogoUrl) {
       try {
-        const logo = await loadImage(data.brandLogoUrl);
-        const logoSize = 320;
-        ctx.drawImage(logo, (width - logoSize) / 2, 110, logoSize, logoSize);
-      } catch (e) { console.warn("Logo skip"); }
+        const logo1 = await loadImage(data.brandLogoUrl);
+        ctx.drawImage(logo1, startX, 130, logoSize, logoSize);
+      } catch (e) { console.warn("Logo1 skip"); }
+    }
+    
+    if (data.secondaryLogoUrl) {
+      try {
+        const logo2 = await loadImage(data.secondaryLogoUrl);
+        ctx.drawImage(logo2, startX + logoSize + gap, 130, logoSize, logoSize);
+      } catch (e) { console.warn("Logo2 skip"); }
     }
 
-    // Title
+    // 4. Título Principal
     ctx.fillStyle = theme.text;
     ctx.textAlign = 'center';
-    ctx.font = '900 110px sans-serif';
-    ctx.fillText("POLÍCIA PENAL", width / 2, 510);
+    ctx.font = '900 100px sans-serif';
+    ctx.fillText("POLÍCIA PENAL", width / 2, 530);
 
-    // Lines
+    // Linhas decorativas
     ctx.fillStyle = '#e11d48';
-    ctx.fillRect(width / 2 - 280, 560, 200, 10);
-    ctx.fillRect(width / 2 + 80, 560, 200, 10);
+    ctx.fillRect(width / 2 - 250, 560, 180, 10);
+    ctx.fillRect(width / 2 + 70, 560, 180, 10);
 
-    // Photo
-    const photoW = 480;
-    const photoH = 600;
+    // 5. Foto do Policial
+    const photoW = 460;
+    const photoH = 580;
     const photoX = (width - photoW) / 2;
-    const photoY = 630;
+    const photoY = 620;
     
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(photoX - 15, photoY - 15, photoW + 30, photoH + 30);
@@ -87,39 +104,48 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
       }
     }
 
-    // CATEGORIA (Destaque na exportação)
+    // 6. Categoria e Nome (Conteúdo Vital)
+    // Categoria
     ctx.fillStyle = theme.categoryText;
-    ctx.font = '900 50px sans-serif';
-    ctx.fillText(data.category || "TITULAR", width / 2, 1330);
+    ctx.font = '900 42px sans-serif';
+    ctx.fillText(data.category || "TITULAR", width / 2, 1260);
 
-    // Name Box
+    // Box do Nome
     ctx.fillStyle = theme.nameBg;
-    roundRect(ctx, (width - 920) / 2, 1370, 920, 180, 40, true);
+    const nameBoxY = 1290;
+    roundRect(ctx, (width - 940) / 2, nameBoxY, 940, 160, 40, true);
     
-    // Name Text
     ctx.fillStyle = theme.text;
-    const name = data.fullName || `NOME DO ${data.category || 'TITULAR'}`;
-    ctx.font = `900 ${name.length > 25 ? '55px' : '75px'} sans-serif`;
-    ctx.fillText(name.toUpperCase(), width / 2, 1485);
+    const name = data.fullName || "SERVIDOR ASSPRIJUF";
+    const fontSize = name.length > 25 ? 50 : 70;
+    ctx.font = `900 ${fontSize}px sans-serif`;
+    ctx.fillText(name.toUpperCase(), width / 2, nameBoxY + 100);
 
-    // Footer
-    ctx.fillStyle = theme.footer;
-    ctx.fillRect(0, height - 200, width, 200);
+    // Texto do Rodapé (Sobre o retângulo do rodapé)
     ctx.fillStyle = '#ffffff';
     ctx.font = '900 130px sans-serif';
     ctx.fillText("ASSPRIJUF", width / 2, height - 60);
 
   } else {
-    // Verso logic
+    // VERSO
     ctx.fillStyle = theme.accent;
-    ctx.fillRect(0, 0, 50, height);
+    ctx.fillRect(0, 0, 40, height);
     
+    if (data.brandLogoUrl && data.secondaryLogoUrl) {
+      try {
+        const logo1 = await loadImage(data.brandLogoUrl);
+        const logo2 = await loadImage(data.secondaryLogoUrl);
+        ctx.drawImage(logo1, 90, 60, 110, 110);
+        ctx.drawImage(logo2, 210, 60, 110, 110);
+      } catch (e) {}
+    }
+
     ctx.fillStyle = theme.text;
     ctx.textAlign = 'left';
     ctx.font = '900 55px sans-serif';
-    ctx.fillText("DADOS FUNCIONAIS", 130, 110);
+    ctx.fillText("DADOS FUNCIONAIS", 340, 140);
     ctx.fillStyle = '#e11d48';
-    ctx.fillRect(100, 70, 15, 60);
+    ctx.fillRect(325, 90, 10, 70);
 
     const drawData = (label: string, value: string, y: number, x = 130, w = 820) => {
       ctx.fillStyle = '#64748b';
@@ -128,35 +154,34 @@ const renderCardToCanvas = async (data: IDCardData, side: 'FRONT' | 'BACK'): Pro
       ctx.fillStyle = theme.text;
       ctx.font = '900 38px sans-serif';
       ctx.fillText(value || '---', x, y + 45);
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(x, y + 75);
-      ctx.lineTo(x + w, y + 75);
+      ctx.moveTo(x, y + 70);
+      ctx.lineTo(x + w, y + 70);
       ctx.stroke();
     };
 
-    drawData("MASP", data.masp, 210);
-    drawData("Matrícula", data.registration, 330, 130, 390);
-    drawData("CPF", data.cpf, 330, 560, 390);
-    drawData("Identidade (RG)", data.identity, 450, 130, 390);
-    drawData("Sanguíneo", data.bloodType, 450, 560, 390);
-    drawData("Nascimento", data.birthDate, 570, 130, 390);
-    drawData("Validade", data.expiryDate, 570, 560, 390);
+    drawData("MASP", data.masp, 260);
+    drawData("Matrícula", data.registration, 390, 130, 390);
+    drawData("CPF", data.cpf, 390, 560, 390);
+    drawData("Identidade (RG)", data.identity, 520, 130, 390);
+    drawData("Sanguíneo", data.bloodType, 520, 560, 390);
+    drawData("Nascimento", data.birthDate, 650, 130, 390);
+    drawData("Validade", data.expiryDate, 650, 560, 390);
 
-    // QR Code Area Placeholder (Black box)
+    // QR Code Box Placeholder (Apenas visual, o QR é gerado no PDF em alta se necessário, 
+    // ou mantemos o espaço para consistência)
     ctx.fillStyle = '#f8fafc';
-    roundRect(ctx, (width - 460) / 2, 840, 460, 460, 60, true);
-    ctx.fillStyle = '#000000';
-    ctx.fillRect((width - 380) / 2, 880, 380, 380);
+    roundRect(ctx, (width - 400) / 2, 850, 400, 400, 50, true);
 
     ctx.fillStyle = theme.text;
     ctx.textAlign = 'center';
     ctx.font = '900 45px sans-serif';
-    ctx.fillText("VALIDAÇÃO DIGITAL", width / 2, 1380);
+    ctx.fillText("VALIDAÇÃO DIGITAL", width / 2, 1350);
     ctx.fillStyle = '#64748b';
     ctx.font = 'bold 24px sans-serif';
-    ctx.fillText("ASSPRIJUF - JUIZ DE FORA", width / 2, 1460);
+    ctx.fillText("ASSPRIJUF - JUIZ DE FORA", width / 2, 1430);
   }
   return canvas;
 };
@@ -199,7 +224,7 @@ export const exportToPDF = async (data: IDCardData, mode: 'FULL' | 'CLONE', file
     pdf.save(`${filename}.pdf`);
   } catch (err) {
     console.error(err);
-    alert("Erro ao gerar PDF.");
+    alert("Erro na exportação para PDF.");
   }
 };
 
@@ -221,7 +246,7 @@ export const exportToImages = async (data: IDCardData, filename: string) => {
     setTimeout(() => download(canvasBack, 'VERSO'), 400);
   } catch (err) {
     console.error(err);
-    alert("Erro ao gerar imagens.");
+    alert("Erro na geração de imagens.");
   }
 };
 

@@ -3,6 +3,7 @@ export interface IDCardData {
   id: string;
   photoUrl: string;
   brandLogoUrl: string;
+  secondaryLogoUrl?: string;
   fullName: string;
   category: string;
   masp: string;

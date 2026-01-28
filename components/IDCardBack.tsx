@@ -54,9 +54,15 @@ const IDCardBack: React.FC<IDCardBackProps> = ({ data, id }) => {
       <div className="flex flex-col items-center pt-14 px-24 h-full">
         
         <div className="flex justify-between items-center w-full mb-8">
-          <h2 className="text-[50px] font-black text-slate-800 tracking-widest border-l-[16px] border-red-600 pl-8 uppercase leading-none">
-            Dados Funcionais
-          </h2>
+          <div className="flex items-center gap-6">
+             <div className="flex gap-4">
+                <img src={data.brandLogoUrl} alt="Logo" className="w-20 h-20 object-contain" />
+                <img src={data.secondaryLogoUrl} alt="Brasão" className="w-20 h-20 object-contain" />
+             </div>
+             <h2 className="text-[46px] font-black text-slate-800 tracking-widest border-l-[12px] border-red-600 pl-8 uppercase leading-none">
+              Dados Funcionais
+            </h2>
+          </div>
         </div>
 
         <div className="flex flex-col w-full">

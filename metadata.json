@@ -1,5 +1,5 @@
 {
-  "name": "Sistema de Carteirinha Virtual - Polícia Penal",
+  "name": "Carteirinha Polícia Penal",
   "description": "Sistema para geração de identidades funcionais virtuais com frente e verso, suporte a exportação em PDF 1080x1920px e geração de QR Code.",
   "requestFramePermissions": [
     "camera"
